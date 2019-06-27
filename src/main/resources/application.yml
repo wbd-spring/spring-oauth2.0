@@ -1,0 +1,12 @@
+spring:
+  redis:
+    host: 118.190.71.215
+    port: 6379
+    
+myredis:  #测试 @value 注解获取yml的值
+  oauthstate: OAUTH_STATE
+ 
+mygood: #测试 @value 注解获取yml的值
+   c: abcefge 
+     
+

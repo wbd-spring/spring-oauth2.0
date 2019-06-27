@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.wbd.oauth.jedis.OauthRedisService;
 import com.wbd.oauth.utils.HttpClientUtils;
+import com.wbd.oauth.utils.JsonUtils;
 
 /**
  * 测试 github与qq授权登录， 利用natapp外网映射工具
@@ -49,9 +50,16 @@ public class OAuthController {
 
 	// 4、使用Access Token以及OpenID来访问和修改用户数据
 	private static final String QQ_USER_INFO_UURL = "https://graph.qq.com/user/get_user_info";
+	
+	private static final String QQ_APP_ID = "101681867";
+	private static final String QQ_APP_KEY = "7b31c830e66767c0f64ce2045f239731";
+	private static final String QQ_REDIRECT_URL = "http://vga8vt.natappfree.cc/qqCallback";
 
 	@Autowired
 	private OauthRedisService ors;
+	
+	
+	/*******************github第三方登录***********************************************************************/
 
 	/**
 	 * 请求认证服务器
@@ -67,7 +75,7 @@ public class OAuthController {
 
 		// 参数传递 ，reponse_type,client_id,redirect_uri, state
 
-		String param = "response_type=code&client_id=" + GITHUB_CLIENT_ID + "&state=" + state + "&redirect_uri"
+		String param = "response_type=code&client_id=" + GITHUB_CLIENT_ID + "&state=" + state + "&redirect_uri="
 				+ GITHUB_REDIRECT_URL;
 
 		// 请求认证服务器
@@ -135,4 +143,102 @@ public class OAuthController {
 		response.getWriter().write(userResult);
 
 	}
+	
+	
+	
+	/*******************qq第三方登录***********************************************************************/
+	
+	
+
+	
+	
+	/**
+	 * 请求认证服务器
+	 * 
+	 * @param response
+	 */
+	@RequestMapping("/qqLogin")
+	public void qqLogin(HttpServletResponse response) {
+		
+		//1.生存state
+		String state = ors.genState();
+		
+		//2.拼接参数
+		String param = "response_type=code&client_id=" + QQ_APP_ID + "&state=" + state + "&redirect_uri="
+				+ QQ_REDIRECT_URL;
+		
+		//3.请求QQ认证服务器
+		
+		try {
+			response.sendRedirect(QQ_AUTHORIZE_URL+"?"+param);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	/**
+	 * qq的回调
+	 * @param code  qq认证服务器返回的
+	 * @param state   这个是我们自己提交到qq认证服务器，qq认证服务器原样返回给我们 
+	 * @param response
+	 * @throws Exception 
+	 */
+	@GetMapping("/qqCallback")
+	public void qqCallback(String code,String state,HttpServletResponse response) throws Exception {
+		
+		//1.验证state，如果不一致，可能被csrf攻击
+		if(!ors.checkState(state)) {
+			
+			throw new Exception("State验证失败");
+		}
+		//2.拼接参数，利用code等相关参数，POST请求qq认证服务器，返回token等其他的值
+		String param = "grant_type=authorization_code&code=" + code + "&redirect_uri=" +
+	            QQ_REDIRECT_URL + "&client_id=" + QQ_APP_ID + "&client_secret=" + QQ_APP_KEY;
+	
+		 //3. QQ获取到的access token具有3个月有效期，用户再次登录时自动刷新。
+		String result = HttpClientUtils.sendPostRequest(QQ_ACCESS_TOKEN_URL, param);
+		
+		
+		//4.对返回的参数进行解析
+		 Map<String, String> resultMap = HttpClientUtils.params2Map(result);
+		    // 如果返回结果中包含access_token，表示成功
+		    if(!resultMap.containsKey("access_token")) {
+		        throw  new Exception("获取token失败");
+		    }
+		 //5. 得到token
+		  String accessToken = resultMap.get("access_token");
+          
+		  String qqParam = "access_token="+accessToken;
+		  
+		  //6.使用accessToken获取用户的openid
+	   String qqResult=HttpClientUtils.sendGetRequest(QQ_ME_URL, qqParam);
+     	
+	   // 成功返回如下：callback( {"client_id":"YOUR_APPID","openid":"YOUR_OPENID"} );
+	    // 取出openid
+	   String openid = getQQOpenid(qqResult);
+	   
+	    //7.使用access_token和openid以及oauth_consumer_key來访问和修改用户数据
+	   String userParam = "access_token="+accessToken+"&oauth_consumer_key="+ QQ_APP_ID + "&openid=" + openid;
+	   String userInfo = HttpClientUtils.sendGetRequest(QQ_USER_INFO_UURL, userParam);
+	   // 8、输出用户信息
+	    response.setContentType("text/html;charset=utf-8");
+	    response.getWriter().write(userInfo);
+	}
+	
+	/**
+	 * 提取Openid
+	 * @param str 形如：callback( {"client_id":"YOUR_APPID","openid":"YOUR_OPENID"} );
+	 * @author zgh
+	 * @since 2018/5/22 21:37
+	 */
+	private String getQQOpenid(String str) {
+	    // 获取花括号内串
+	    String json = str.substring(str.indexOf("{"), str.indexOf("}") + 1);
+	    // 转为Map
+	    Map<String, String> map = JsonUtils.jsonToPojo(json, Map.class);
+	    return map.get("openid");
+	}
+	
 }

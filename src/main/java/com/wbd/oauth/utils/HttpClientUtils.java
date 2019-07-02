@@ -311,7 +311,7 @@ public class HttpClientUtils {
     /**
      * url参数转Map
      * 形如：access_token=example_token&scope=&token_type=bearer
-     * @author jitwxs
+     * @author zgh
      * @since 2018/5/21 16:47
      */
     public static Map<String, String> params2Map(String params) {

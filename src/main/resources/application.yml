@@ -2,6 +2,11 @@ spring:
   redis:
     host: 118.190.71.215
     port: 6379
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/oauth2?useUnicode=true&characterEncoding=utf-8&useSSL=false
+    username: root
+    password: 
     
 myredis:  #测试 @value 注解获取yml的值
   oauthstate: OAUTH_STATE
@@ -9,4 +14,3 @@ myredis:  #测试 @value 注解获取yml的值
 mygood: #测试 @value 注解获取yml的值
    c: abcefge 
      
-

@@ -29,6 +29,9 @@ public class Role implements GrantedAuthority {
 		this.name = name;
 	}
 
+	/**
+	 * 实现GrantedAuthority接口中的唯一方法
+	 */
 	@Override
 	public String getAuthority() {
 		return name;

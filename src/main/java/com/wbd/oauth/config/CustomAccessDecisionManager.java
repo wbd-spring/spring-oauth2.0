@@ -45,7 +45,11 @@ public class CustomAccessDecisionManager implements AccessDecisionManager{
 				
 				needRole = it.next().getAttribute();
 				
+				System.out.println("needRole==="+needRole);
+				
 				for(GrantedAuthority ga:authentication.getAuthorities()) {
+					
+					System.out.println("查询出数据库中用户所授权的角色=="+ga.getAuthority());
 					
 					//如果存在， 就放行，
 					if(needRole.trim().equals(ga.getAuthority().trim())) {
